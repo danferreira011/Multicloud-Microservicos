@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor Multicloud (AWS + Azure + GCP)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 90vh;
+            background-color: #f0f2f5;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 450px;
+        }
+        .container h1 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 1.8rem;
+        }
+        .container img {
+            height: 35px;
+        }
+        input {
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            margin: 1rem 0;
+            width: 150px;
+            text-align: center;
+        }
+        button {
+            font-size: 1rem;
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin: 0 5px;
+            transition: transform 0.1s ease;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        .aws { background-color: #FF9900; }
+        .aws:hover { background-color: #e68a00; }
+
+        .azure { background-color: #0078D4; }
+        .azure:hover { background-color: #005a9e; }
+
+        .gcp { background-color: #4285F4; }
+        .gcp:hover { background-color: #357ae8; }
+
+        .resultado {
+            margin-top: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            min-height: 2.2rem; /* Evita que a caixa "pule" */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>
+            Conversor Celsius (°C)
+        </h1>
+        <p>Digite a temperatura em Celsius</p>
+
+        <div>
+            <input type="number" id="celsiusInput" placeholder="Ex: 20">
+        </div>
+        <div>
+            <button id="convertButtonAws" class="aws">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg" style="height:15px; vertical-align: middle; margin-right: 5px;">
+                para °F (AWS)
+            </button>
+            <button id="convertButtonGcp" class="gcp">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_Cloud_logo.svg" style="height:15px; vertical-align: middle; margin-right: 5px;">
+                para °K (GCP)
+            </button>
+        </div>
+
+        <div id="resultadoAws" class="resultado">
+            </div>
+        <div id="resultadoGcp" class="resultado">
+            </div>
+    </div>
+
+    <div class="container">
+        <h1>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a8/Microsoft_Azure_Logo.svg" alt="Azure Logo">
+            Conversor (°F)
+        </h1>
+        <p>Digite a temperatura em Fahrenheit</p>
+
+        <div>
+            <input type="number" id="fahrenheitInput" placeholder="Ex: 68">
+        </div>
+        <div>
+            <button id="convertButtonAzure" class="azure">
+                para °C (Azure)
+            </button>
+        </div>
+
+        <div id="resultadoAzure" class="resultado">
+            </div>
+    </div>
+
+
+    <script>
+        // --- CONFIGURAÇÃO DAS URLs ---
+
+        // 1. Cole a URL da sua API AWS (REST API)
+        // Ex: "https://...execute-api.us-east-1.amazonaws.com/prod/converteCelsiusParaFahrenheit"
+        const awsApiUrl = "COLE_SUA_URL_DA_AWS_AQUI";
+
+        // 2. Cole a URL da sua Azure Function (PowerShell ou PHP)
+        // Ex: "https://app-conversor-pshell...azurewebsites.net/api/converteFahrenheitParaCelsius"
+        const azureApiUrl = "COLE_SUA_URL_DA_AZURE_AQUI";
+
+        // 3. Cole a URL da sua GCP Cloud Run (PHP ou Go)
+        // Ex: "https://convertecelsiusparakelvin-...a.run.app"
+        const gcpApiUrl = "COLE_SUA_URL_DA_GCP_AQUI";
+
+
+        // --- LÓGICA DO BLOCO 1 (CELSIUS) ---
+        const celsiusInput = document.getElementById("celsiusInput");
+
+        // Botão AWS
+        const convertButtonAws = document.getElementById("convertButtonAws");
+        const resultadoAwsDiv = document.getElementById("resultadoAws");
+
+        convertButtonAws.addEventListener("click", () => {
+            const celsiusValue = celsiusInput.value;
+            if (celsiusValue === "") {
+                resultadoAwsDiv.textContent = "Digite um valor Celsius.";
+                resultadoGcpDiv.textContent = "";
+                return;
+            }
+            resultadoAwsDiv.textContent = "Convertendo (AWS)...";
+            resultadoGcpDiv.textContent = ""; // Limpa o outro resultado
+
+            fetch(awsApiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ celsius: celsiusValue })
+            })
+            .then(response => {
+                if (!response.ok) { // Verifica se a resposta não foi OK (ex: 4xx, 5xx)
+                    throw new Error(`Erro HTTP AWS: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.fahrenheit_calculado !== undefined) {
+                    let fahrenheit = data.fahrenheit_calculado.toFixed(2);
+                    resultadoAwsDiv.innerHTML = `${celsiusValue}°C é igual a <strong>${fahrenheit}°F</strong>`;
+                } else {
+                    resultadoAwsDiv.textContent = "Erro AWS: " + (data.erro || data.message || "Resposta inválida");
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao chamar a API AWS:", error);
+                resultadoAwsDiv.textContent = `Erro API AWS: ${error.message}`;
+            });
+        });
+
+        // Botão GCP
+        const convertButtonGcp = document.getElementById("convertButtonGcp");
+        const resultadoGcpDiv = document.getElementById("resultadoGcp");
+
+        convertButtonGcp.addEventListener("click", () => {
+            const celsiusValue = celsiusInput.value;
+            if (celsiusValue === "") {
+                resultadoGcpDiv.textContent = "Digite um valor Celsius.";
+                resultadoAwsDiv.textContent = "";
+                return;
+            }
+            resultadoGcpDiv.textContent = "Convertendo (GCP)...";
+            resultadoAwsDiv.textContent = ""; // Limpa o outro resultado
+
+            fetch(gcpApiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ celsius: celsiusValue })
+            })
+            .then(response => {
+                 if (!response.ok) {
+                    throw new Error(`Erro HTTP GCP: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.kelvin_calculado !== undefined) {
+                    let kelvin = data.kelvin_calculado.toFixed(2);
+                    resultadoGcpDiv.innerHTML = `${celsiusValue}°C é igual a <strong>${kelvin}°K</strong>`;
+                } else {
+                    resultadoGcpDiv.textContent = "Erro GCP: " + (data.erro || "Resposta inválida");
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao chamar a API GCP:", error);
+                resultadoGcpDiv.textContent = `Erro API GCP: ${error.message}`;
+            });
+        });
+
+
+        // --- LÓGICA DO BLOCO 2 (FAHRENHEIT -> AZURE) ---
+        const fahrenheitInput = document.getElementById("fahrenheitInput");
+        const convertButtonAzure = document.getElementById("convertButtonAzure");
+        const resultadoAzureDiv = document.getElementById("resultadoAzure");
+
+        convertButtonAzure.addEventListener("click", () => {
+            const fahrenheitValue = fahrenheitInput.value;
+            if (fahrenheitValue === "") {
+                resultadoAzureDiv.textContent = "Digite um valor Fahrenheit.";
+                return;
+            }
+            resultadoAzureDiv.textContent = "Convertendo (Azure)...";
+
+            fetch(azureApiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fahrenheit: fahrenheitValue })
+            })
+            .then(response => {
+                 if (!response.ok) {
+                    throw new Error(`Erro HTTP Azure: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.celsius_calculado !== undefined) {
+                    let celsius = data.celsius_calculado.toFixed(2);
+                    resultadoAzureDiv.innerHTML = `${fahrenheitValue}°F é igual a <strong>${celsius}°C</strong>`;
+                } else {
+                    resultadoAzureDiv.textContent = "Erro Azure: " + (data.erro || "Resposta inválida");
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao chamar a API Azure:", error);
+                resultadoAzureDiv.textContent = `Erro API Azure: ${error.message}`;
+            });
+        });
+
+    </script>
+
+</body>
+</html>
